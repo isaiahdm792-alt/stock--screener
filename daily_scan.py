@@ -107,6 +107,85 @@ def normalize(series):
         return pd.Series([50] * len(series), index=series.index)
     return (series - series.min()) / range_ * 100
 
+# ============================================================
+# STEP 7: Confidence rating + AI Summary
+# ============================================================
+def calculate_confidence(row):
+    sources_present = 0
+    total_sources = 4
+
+    if pd.notna(row.get("peg_ratio")):
+        sources_present += 1
+    if pd.notna(row.get("above_sma200")):
+        sources_present += 1
+    if pd.notna(row.get("sentiment_score")):
+        sources_present += 1
+    if pd.notna(row.get("macro_adjustment")):
+        sources_present += 1
+
+    confidence_pct = (sources_present / total_sources) * 100
+    return confidence_pct, sources_present
+
+
+def generate_summary(row):
+    parts = []
+
+    if pd.notna(row.get("peg_ratio")):
+        if row["peg_ratio"] < 1:
+            parts.append(f"trades at an attractive PEG ratio of {row['peg_ratio']:.2f}")
+        elif row["peg_ratio"] < 2:
+            parts.append(f"has a reasonable PEG ratio of {row['peg_ratio']:.2f}")
+        else:
+            parts.append(f"trades at a relatively high PEG ratio of {row['peg_ratio']:.2f}")
+
+    if pd.notna(row.get("pe_vs_sector")):
+        if row["pe_vs_sector"] < 0:
+            parts.append("is priced below its sector's average P/E")
+        else:
+            parts.append("is priced above its sector's average P/E")
+
+    tech_notes = []
+    if row.get("above_sma50") and row.get("above_sma200"):
+        tech_notes.append("trading above both its 50 and 200-day averages")
+    elif row.get("above_sma200"):
+        tech_notes.append("trading above its 200-day average")
+    elif not row.get("above_sma200", True):
+        tech_notes.append("trading below its 200-day average")
+
+    if row.get("macd_bullish"):
+        tech_notes.append("showing bullish MACD momentum")
+
+    if row.get("volume_spike"):
+        tech_notes.append("seeing an unusual volume spike")
+
+    if tech_notes:
+        parts.append("is " + " and ".join(tech_notes))
+
+    if pd.notna(row.get("sentiment_score")):
+        if row["sentiment_score"] > 0.15:
+            parts.append("recent news sentiment has been notably positive")
+        elif row["sentiment_score"] < -0.15:
+            parts.append("recent news sentiment has been notably negative")
+        else:
+            parts.append("recent news sentiment has been roughly neutral")
+    else:
+        parts.append("no reliable sentiment data was available today")
+
+    ticker = row["ticker"]
+    if not parts:
+        return f"{ticker}: insufficient data to generate a summary."
+
+    summary = f"{ticker} " + ", and ".join(parts) + "."
+    return summary
+
+
+def add_confidence_and_summary(df):
+    df = df.copy()
+    confidence_results = df.apply(calculate_confidence, axis=1)
+    df["confidence_pct"] = [r[0] for r in confidence_results]
+    df["sources_present"] = [r[1] for r in confidence_results]
+    df["ai_summary"] = df.apply(generate_summary, axis=1)
+    return df
 
 # ============================================================
 # STEP 5: Sentiment (NewsAPI + FinBERT), top candidates only
@@ -298,6 +377,7 @@ def main():
     else:
         print("FRED_API_KEY not set - skipping macro layer.")
 
+    df_final = add_confidence_and_summary(df_final)
     df_final = df_final.sort_values("score", ascending=False)
     df_final.to_csv("scored_snapshot.csv", index=False)
 
