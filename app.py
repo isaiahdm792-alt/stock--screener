@@ -59,3 +59,7 @@ with right:
         st.write(f"Sector: {row['sector']}")
         st.write(f"PEG ratio: {row.get('peg_ratio', 'N/A')}")
         st.write(f"Above 200-day SMA: {row.get('above_sma200', 'N/A')}")
+
+        st.write("---")
+        st.write(f"**Confidence:** {row.get('confidence_pct', 0):.0f}% ({int(row.get('sources_present', 0))}/4 data sources)")
+        st.write(f"**AI Summary:** {row.get('ai_summary', 'Not available')}")
