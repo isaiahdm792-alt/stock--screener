@@ -4,7 +4,7 @@ import pandas as pd
 st.set_page_config(page_title="Stock Screener", layout="wide")
 st.title("Stock Screener")
 
-df = pd.read_csv("scored_snapshot (2).csv")
+df = pd.read_csv("scored_snapshot.csv")
 
 # --- Filters ---
 col1, col2, col3 = st.columns(3)
