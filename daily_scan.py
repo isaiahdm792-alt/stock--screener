@@ -409,6 +409,7 @@ def main():
     else:
         print("FRED_API_KEY not set - skipping macro layer.")
 
+    df_final = add_model_scores(df_final)
     df_final = add_confidence_and_summary(df_final)
     df_final = df_final.sort_values("score", ascending=False)
     df_final.to_csv("scored_snapshot.csv", index=False)
