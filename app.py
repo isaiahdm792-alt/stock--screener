@@ -6,24 +6,27 @@ st.title("Stock Screener")
 
 df = pd.read_csv("scored_snapshot.csv")
 
+model = st.selectbox("Screening model", ["Overall", "Value", "Growth", "Momentum"])
+score_column = {"Overall": "score", "Value": "value_score", "Growth": "growth_composite", "Momentum": "momentum_score"}[model]
+
 # --- Filters ---
 col1, col2, col3 = st.columns(3)
 with col1:
     sectors = ["All"] + sorted(df["sector"].dropna().unique().tolist())
     sector_filter = st.selectbox("Sector", sectors)
 with col2:
-    min_score = st.slider("Minimum score", 0, int(df["score"].max()), 0)
+    min_score = st.slider("Minimum score", 0, int(df[score_column].max()), 0)
 with col3:
     ticker_search = st.text_input("Search ticker")
 
 filtered = df.copy()
 if sector_filter != "All":
     filtered = filtered[filtered["sector"] == sector_filter]
-filtered = filtered[filtered["score"] >= min_score]
+filtered = filtered[filtered[score_column] >= min_score]
 if ticker_search:
     filtered = filtered[filtered["ticker"].str.contains(ticker_search.upper())]
 
-filtered = filtered.sort_values("score", ascending=False)
+filtered = filtered.sort_values(score_column, ascending=False)
 
 # --- Main layout: table on the left, detail panel on the right ---
 left, right = st.columns([2, 1])
@@ -31,7 +34,7 @@ left, right = st.columns([2, 1])
 with left:
     st.subheader(f"Ranked stocks ({len(filtered)})")
     st.dataframe(
-        filtered[["ticker", "score", "sector", "fundamentals_score", "technicals_score"]],
+        filtered[["ticker", score_column, "sector", "fundamentals_score", "technicals_score"]],
         use_container_width=True,
         height=500,
     )
@@ -43,7 +46,7 @@ with right:
     if selected:
         row = filtered[filtered["ticker"] == selected].iloc[0]
 
-        st.metric("Composite score", f"{row['score']:.1f}")
+        st.metric(f"{model} score", f"{row[score_column]:.1f}")
 
         st.write("**Fundamentals**")
         st.progress(min(int(row["fundamentals_score"]), 100) / 100)
