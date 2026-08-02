@@ -108,6 +108,38 @@ def normalize(series):
     return (series - series.min()) / range_ * 100
 
 # ============================================================
+# Three scoring models: Value, Growth, Momentum
+# ============================================================
+def add_model_scores(df):
+    df = df.copy()
+
+    # Growth score uses percentile rank - immune to extreme outlier earnings_growth values
+    df["growth_score"] = df["earnings_growth"].fillna(0).rank(pct=True) * 100
+
+    df["value_score"] = (
+        df["fundamentals_score"] * 0.60
+        + df["technicals_score"] * 0.25
+        + df["sentiment_norm"].fillna(50) * 0.15
+    )
+
+    df["growth_composite"] = (
+        df["growth_score"] * 0.70
+        + df["technicals_score"] * 0.20
+        + df["sentiment_norm"].fillna(50) * 0.10
+    )
+
+    df["momentum_score"] = (
+        df["technicals_score"] * 0.55
+        + df["sentiment_norm"].fillna(50) * 0.35
+        + df["fundamentals_score"] * 0.10
+    )
+
+    return df
+
+
+</parameter>
+
+# ============================================================
 # STEP 7: Confidence rating + AI Summary
 # ============================================================
 def calculate_confidence(row):
