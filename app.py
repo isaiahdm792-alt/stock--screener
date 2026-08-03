@@ -66,3 +66,21 @@ with right:
         st.write("---")
         st.write(f"**Confidence:** {row.get('confidence_pct', 0):.0f}% ({int(row.get('sources_present', 0))}/4 data sources)")
         st.write(f"**AI Summary:** {row.get('ai_summary', 'Not available')}")
+
+st.write("---")
+st.subheader("Compare stocks")
+
+compare_tickers = st.multiselect("Select 2-3 tickers to compare", df["ticker"].tolist())
+
+if len(compare_tickers) >= 2:
+    compare_df = df[df["ticker"].isin(compare_tickers)].set_index("ticker")
+
+    comparison_table = compare_df[[
+        "score", "value_score", "growth_composite", "momentum_score",
+        "fundamentals_score", "technicals_score", "sentiment_norm",
+        "peg_ratio", "confidence_pct"
+    ]].T  # transpose so tickers become columns, metrics become rows
+
+    st.dataframe(comparison_table, use_container_width=True)
+elif len(compare_tickers) == 1:
+    st.info("Select at least one more ticker to compare.")      
