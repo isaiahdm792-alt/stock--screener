@@ -136,6 +136,24 @@ def add_model_scores(df):
 
     return df
 
+# ============================================================
+# Score history tracking
+# ============================================================
+def update_score_history(df, history_path="score_history.csv"):
+    """Append today's scores to the running history file, keeping the full table intact."""
+    today = pd.Timestamp.now().strftime("%Y-%m-%d")
+    snapshot = df[["ticker", "score", "value_score", "growth_composite", "momentum_score"]].copy()
+    snapshot.insert(0, "date", today)
+
+    try:
+        existing = pd.read_csv(history_path)
+        combined = pd.concat([existing, snapshot], ignore_index=True)
+    except FileNotFoundError:
+        combined = snapshot
+
+    combined = combined.drop_duplicates(subset=["date", "ticker"], keep="last")
+    combined.to_csv(history_path, index=False)
+    return combined
 
 # ============================================================
 # STEP 7: Confidence rating + AI Summary
@@ -411,6 +429,7 @@ def main():
     df_final = add_confidence_and_summary(df_final)
     df_final = df_final.sort_values("score", ascending=False)
     df_final.to_csv("scored_snapshot.csv", index=False)
+    update_score_history(df_final)
 
     print("\n=== Done ===")
     print(f"Final rows: {len(df_final)}")
